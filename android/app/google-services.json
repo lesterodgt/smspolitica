@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "993032719580",
+    "project_id": "app-mensajes-56961",
+    "storage_bucket": "app-mensajes-56961.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:993032719580:android:ab34fcdb04434a6f207819",
+        "android_client_info": {
+          "package_name": "com.cyd.smsPolitica"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "993032719580-8673kan3odljsfkrt3p061ct7qp2gru2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cyd.smsPolitica",
+            "certificate_hash": "19481237b2274ed7e0d1565864f0f7bcb0d2ee1d"
+          }
+        },
+        {
+          "client_id": "993032719580-4q299e895nfd2l3gsfiijaus96vahm3r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKlK3VxCINvG10Bq9bkMTiGPdUwQWOkAc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "993032719580-4q299e895nfd2l3gsfiijaus96vahm3r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
