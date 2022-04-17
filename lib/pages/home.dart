@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:smspolitica/model/PushNotification.dart';
 import 'package:smspolitica/widget/notificacion.dart';
 import 'package:overlay_support/overlay_support.dart';
+import 'package:telephony/telephony.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Handling a background message: ${message.messageId}");
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   late final FirebaseMessaging _messaging;
   late int _totalNotifications;
   PushNotification? _notificationInfo;
+  final telephony = Telephony.instance;
 
   void registerNotification() async {
     await Firebase.initializeApp();
@@ -41,7 +43,7 @@ class _HomePageState extends State<HomePage> {
         print(
             'Message title: ${message.notification?.title}, body: ${message.notification?.body}, data: ${message.data}');
 
-        // Parse the message received
+        enviarMensaje('53138850', '${message.notification?.body}');
         PushNotification notification = PushNotification(
           title: message.notification?.title,
           body: message.notification?.body,
@@ -70,6 +72,15 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  enviarMensaje(String para, String mensaje) {
+    telephony.sendSms(
+        to: para, message: mensaje, statusListener: estadoMensaje);
+  }
+
+  estadoMensaje(SendStatus status) {
+    print(status.toString());
+  }
+
   // For handling notification when the app is in terminated state
   checkForInitialMessage() async {
     await Firebase.initializeApp();
@@ -91,11 +102,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  checkForSMSessage() async {
+    final bool? result = await telephony.requestPhoneAndSmsPermissions;
+
+    if (result != null && result) {}
+
+    if (!mounted) return;
+  }
+
   @override
   void initState() {
     _totalNotifications = 0;
     registerNotification();
     checkForInitialMessage();
+    checkForSMSessage();
 
     // For handling notification when the app is in background
     // but not terminated
