@@ -40,6 +40,7 @@ dependency_overrides:
   firebase_messaging: ^11.2.7
   overlay_support: ^1.2.1
   telephony: ^0.1.4
+  sqflite: ^2.0.2
 
 dev_dependencies:
   flutter_test:

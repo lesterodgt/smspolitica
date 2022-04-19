@@ -1,24 +1,29 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:smspolitica/model/PushNotification.dart';
-import 'package:smspolitica/widget/notificacion.dart';
-import 'package:overlay_support/overlay_support.dart';
+import 'package:smspolitica/helper/sms_helper.dart';
+import 'package:smspolitica/helper/sql_helper.dart';
 import 'package:telephony/telephony.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print("Handling a background message: ${message.messageId}");
+  await Firebase.initializeApp();
+
+  List<String> destinatarios = message.data['telephone'].toString().split(",");
+  for (var telefono in destinatarios) {
+    SMSHelper.enviarMensaje(telefono, message.data['message']);
+  }
 }
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final FirebaseMessaging _messaging;
-  late int _totalNotifications;
-  PushNotification? _notificationInfo;
+
   final telephony = Telephony.instance;
 
   void registerNotification() async {
@@ -34,51 +39,29 @@ class _HomePageState extends State<HomePage> {
       sound: true,
     );
     final token = await _messaging.getToken();
-    print("***********************");
-    print(token);
+    debugPrint(token);
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
+      debugPrint('User granted permission');
 
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print(
-            'Message title: ${message.notification?.title}, body: ${message.notification?.body}, data: ${message.data}');
-
-        enviarMensaje('53138850', '${message.notification?.body}');
-        PushNotification notification = PushNotification(
-          title: message.notification?.title,
-          body: message.notification?.body,
-          dataTitle: message.data['title'],
-          dataBody: message.data['body'],
-        );
-
-        setState(() {
-          _notificationInfo = notification;
-          _totalNotifications++;
-        });
-
-        if (_notificationInfo != null) {
-          // For displaying the notification as an overlay
-          showSimpleNotification(
-            Text(_notificationInfo!.title!),
-            leading: NotificationBadge(totalNotifications: _totalNotifications),
-            subtitle: Text(_notificationInfo!.body!),
-            background: Colors.cyan.shade700,
-            duration: Duration(seconds: 2),
-          );
-        }
+        procesarMensaje(message);
       });
     } else {
-      print('User declined or has not accepted permission');
+      debugPrint('Debe dar permisos para acceder a mensajes sms');
     }
   }
 
-  enviarMensaje(String para, String mensaje) {
-    telephony.sendSms(
-        to: para, message: mensaje, statusListener: estadoMensaje);
+  List<Mensaje> mensajes = [];
+
+  void actualizarMensajes() async {
+    final data = await SQLHelper.getItems();
+    setState(() {
+      mensajes = data;
+    });
   }
 
   estadoMensaje(SendStatus status) {
-    print(status.toString());
+    debugPrint(status.toString());
   }
 
   // For handling notification when the app is in terminated state
@@ -86,100 +69,75 @@ class _HomePageState extends State<HomePage> {
     await Firebase.initializeApp();
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
-
     if (initialMessage != null) {
-      PushNotification notification = PushNotification(
-        title: initialMessage.notification?.title,
-        body: initialMessage.notification?.body,
-        dataTitle: initialMessage.data['title'],
-        dataBody: initialMessage.data['body'],
-      );
-
-      setState(() {
-        _notificationInfo = notification;
-        _totalNotifications++;
-      });
+      procesarMensaje(initialMessage);
     }
   }
 
   checkForSMSessage() async {
     final bool? result = await telephony.requestPhoneAndSmsPermissions;
-
     if (result != null && result) {}
-
     if (!mounted) return;
   }
 
   @override
   void initState() {
-    _totalNotifications = 0;
     registerNotification();
     checkForInitialMessage();
     checkForSMSessage();
-
-    // For handling notification when the app is in background
-    // but not terminated
+    actualizarMensajes();
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      PushNotification notification = PushNotification(
-        title: message.notification?.title,
-        body: message.notification?.body,
-        dataTitle: message.data['title'],
-        dataBody: message.data['body'],
-      );
-
-      setState(() {
-        _notificationInfo = notification;
-        _totalNotifications++;
-      });
+      procesarMensaje(message);
     });
-
     super.initState();
+    WidgetsBinding.instance?.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) return;
+    final isBackground = state == AppLifecycleState.paused;
+    if (!isBackground) {
+      actualizarMensajes();  
+    }
+  }
+
+  procesarMensaje(RemoteMessage message) {
+    List<String> destinatarios =
+        message.data['telephone'].toString().split(",");
+    for (var telefono in destinatarios) {
+      SMSHelper.enviarMensaje(telefono, message.data['message']);
+    }
+    actualizarMensajes();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Notify'),
-        brightness: Brightness.dark,
-      ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'App for capturing Firebase Push Notifications',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
+      appBar: AppBar(title: const Text('Mensajes')),
+      body: ListView.builder(
+        itemCount: mensajes.length,
+        itemBuilder: (BuildContext context, int index) {
+          Mensaje item = mensajes.elementAt(index);
+          return ListTile(
+            leading: Icon(
+              item.estado == 1 ? Icons.check : Icons.update,
+              color: item.estado == 1 ? Colors.green : Colors.orange,
+              size: 30,
             ),
-          ),
-          SizedBox(height: 16.0),
-          NotificationBadge(totalNotifications: _totalNotifications),
-          SizedBox(height: 16.0),
-          _notificationInfo != null
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TITLE: ${_notificationInfo!.dataTitle ?? _notificationInfo!.title}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                      ),
-                    ),
-                    SizedBox(height: 8.0),
-                    Text(
-                      'BODY: ${_notificationInfo!.dataBody ?? _notificationInfo!.body}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                      ),
-                    ),
-                  ],
-                )
-              : Container(),
-        ],
+            minLeadingWidth: 0,
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(item.destinatario),
+                Text(item.fecha),
+              ],
+            ),
+            subtitle: Text(item.contenido),
+          );
+        },
       ),
     );
   }
