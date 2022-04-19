@@ -62,19 +62,14 @@ class SQLHelper {
     return db.query('mensaje', where: "id = ?", whereArgs: [id], limit: 1);
   }
 
-  // Update an item by id
+  //
   static Future<int> updateItem(
-      int id, String title, String? descrption) async {
+      int id, int estado, int idsms) async {
     final db = await SQLHelper.db();
 
-    final data = {
-      'title': title,
-      'description': descrption,
-      'createdAt': DateTime.now().toString()
-    };
-
+    final data = {'idmensaje': idsms, 'estado': estado};
     final result =
-        await db.update('items', data, where: "id = ?", whereArgs: [id]);
+        await db.update('mensaje', data, where: "id = ?", whereArgs: [id]);
     return result;
   }
 

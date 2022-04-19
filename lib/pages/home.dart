@@ -3,14 +3,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:smspolitica/helper/sms_helper.dart';
 import 'package:smspolitica/helper/sql_helper.dart';
-import 'package:telephony/telephony.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
   List<String> destinatarios = message.data['telephone'].toString().split(",");
   for (var telefono in destinatarios) {
-    SMSHelper.enviarMensaje(telefono, message.data['message']);
+    SMSHelper.enviarMensaje(telefono, message.data['message'], () {});
   }
 }
 
@@ -23,8 +22,6 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final FirebaseMessaging _messaging;
-
-  final telephony = Telephony.instance;
 
   void registerNotification() async {
     await Firebase.initializeApp();
@@ -60,10 +57,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     });
   }
 
-  estadoMensaje(SendStatus status) {
-    debugPrint(status.toString());
-  }
-
   // For handling notification when the app is in terminated state
   checkForInitialMessage() async {
     await Firebase.initializeApp();
@@ -74,17 +67,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  checkForSMSessage() async {
-    final bool? result = await telephony.requestPhoneAndSmsPermissions;
-    if (result != null && result) {}
-    if (!mounted) return;
-  }
-
   @override
   void initState() {
     registerNotification();
     checkForInitialMessage();
-    checkForSMSessage();
     actualizarMensajes();
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       procesarMensaje(message);
@@ -100,15 +86,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) return;
     final isBackground = state == AppLifecycleState.paused;
     if (!isBackground) {
-      actualizarMensajes();  
+      actualizarMensajes();
     }
+  }
+
+  refresh() {
+    actualizarMensajes();
+    setState(() {});
   }
 
   procesarMensaje(RemoteMessage message) {
     List<String> destinatarios =
         message.data['telephone'].toString().split(",");
     for (var telefono in destinatarios) {
-      SMSHelper.enviarMensaje(telefono, message.data['message']);
+      SMSHelper.enviarMensaje(telefono, message.data['message'], refresh);
     }
     actualizarMensajes();
   }
