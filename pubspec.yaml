@@ -41,6 +41,7 @@ dependency_overrides:
   overlay_support: ^1.2.1
   telephony: ^0.1.4
   sqflite: ^2.0.2
+  localstorage: ^4.0.0+1
 
 dev_dependencies:
   flutter_test:

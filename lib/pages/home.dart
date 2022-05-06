@@ -1,8 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smspolitica/helper/sms_helper.dart';
 import 'package:smspolitica/helper/sql_helper.dart';
+import 'package:localstorage/localstorage.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -22,7 +24,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final FirebaseMessaging _messaging;
-
+  final LocalStorage storage = LocalStorage('token');
   void registerNotification() async {
     await Firebase.initializeApp();
     _messaging = FirebaseMessaging.instance;
@@ -36,10 +38,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       sound: true,
     );
     final token = await _messaging.getToken();
-    debugPrint(token);
+    storage.setItem('token', token);
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       debugPrint('User granted permission');
-
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         procesarMensaje(message);
       });
@@ -107,7 +108,31 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mensajes')),
+      appBar: AppBar(
+        title: const Text('Mensajes'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outlined),
+            tooltip: 'Token',
+            onPressed: () async {
+              String token = storage.getItem("token").toString();
+              await Clipboard.setData(ClipboardData(text: token));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  duration: Duration(milliseconds: 500),
+                  content: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 25),
+                    child: Text(
+                      'Token copiado',
+                      style: TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: ListView.builder(
         itemCount: mensajes.length,
         itemBuilder: (BuildContext context, int index) {

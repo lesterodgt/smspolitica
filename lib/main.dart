@@ -11,12 +11,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return OverlaySupport(
       child: MaterialApp(
-        title: 'Notify',
+        title: '',
         theme: ThemeData(
           primarySwatch: Colors.deepPurple,
         ),
         debugShowCheckedModeBanner: false,
-        home: HomePage(),
+        home: const HomePage(),
       ),
     );
   }
