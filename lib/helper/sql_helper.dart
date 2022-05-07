@@ -55,6 +55,17 @@ class SQLHelper {
     return mensajes;
   }
 
+  static Future<List<Mensaje>> obtenerNoEnviados() async {
+    final db = await SQLHelper.db();
+    List<Mensaje> mensajes = [];
+    var mensajesDB =
+        await db.rawQuery('SELECT * FROM mensaje where estado = 0;');
+    for (var itemDB in mensajesDB) {
+      mensajes.add(Mensaje.fromMap(itemDB));
+    }
+    return mensajes;
+  }
+
   // Read a single item by id
   // The app doesn't use this method but I put here in case you want to see it
   static Future<List<Map<String, dynamic>>> getItem(int id) async {
@@ -63,8 +74,7 @@ class SQLHelper {
   }
 
   //
-  static Future<int> updateItem(
-      int id, int estado, int idsms) async {
+  static Future<int> updateItem(int id, int estado, int idsms) async {
     final db = await SQLHelper.db();
 
     final data = {'idmensaje': idsms, 'estado': estado};
@@ -77,7 +87,7 @@ class SQLHelper {
   static Future<void> deleteItem(int id) async {
     final db = await SQLHelper.db();
     try {
-      await db.delete("items", where: "id = ?", whereArgs: [id]);
+      await db.delete("mensaje", where: "id = ?", whereArgs: [id]);
     } catch (err) {
       debugPrint("Something went wrong when deleting an item: $err");
     }

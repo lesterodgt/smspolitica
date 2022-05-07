@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:smspolitica/helper/sms_helper.dart';
 import 'package:smspolitica/helper/sql_helper.dart';
 import 'package:localstorage/localstorage.dart';
+import 'package:telephony/telephony.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
@@ -110,51 +111,87 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mensajes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outlined),
-            tooltip: 'Token',
-            onPressed: () async {
-              String token = storage.getItem("token").toString();
-              await Clipboard.setData(ClipboardData(text: token));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  duration: Duration(milliseconds: 500),
-                  content: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 25),
-                    child: Text(
-                      'Token copiado',
-                      style: TextStyle(fontSize: 20),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+        actions: [botonVerToken(), botonSincronizar()],
       ),
       body: ListView.builder(
         itemCount: mensajes.length,
         itemBuilder: (BuildContext context, int index) {
           Mensaje item = mensajes.elementAt(index);
-          return ListTile(
-            leading: Icon(
-              item.estado == 1 ? Icons.check : Icons.update,
-              color: item.estado == 1 ? Colors.green : Colors.orange,
-              size: 30,
-            ),
-            minLeadingWidth: 0,
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(item.destinatario),
-                Text(item.fecha),
-              ],
-            ),
-            subtitle: Text(item.contenido),
-          );
+          return itemMensaje(item);
         },
       ),
+    );
+  }
+
+  Widget itemMensaje(Mensaje item) {
+    if (item.estado == 1) {
+      return detalleMensaje(item);
+    }
+    return Dismissible(
+      key: UniqueKey(),
+      onDismissed: (direction) {
+        SQLHelper.deleteItem(item.id);
+        actualizarMensajes();
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Mensaje eliminado')));
+      },
+      background: Container(color: Colors.red),
+      child: detalleMensaje(item),
+    );
+  }
+
+  Widget detalleMensaje(Mensaje item) {
+    return ListTile(
+      leading: Icon(
+        item.estado == 1 ? Icons.check : Icons.update,
+        color: item.estado == 1 ? Colors.green : Colors.orange,
+        size: 30,
+      ),
+      minLeadingWidth: 0,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(item.destinatario),
+          Text(item.fecha),
+        ],
+      ),
+      subtitle: Text(item.contenido),
+    );
+  }
+
+  Widget botonSincronizar() {
+    return IconButton(
+      onPressed: () async {
+        List<Mensaje> messages = await SQLHelper.obtenerNoEnviados();
+        for (var itemMsg in messages) {
+          SMSHelper.renviarMensaje(itemMsg.id, itemMsg.destinatario,
+              itemMsg.contenido, () => refresh());
+        }
+      },
+      icon: const Icon(Icons.refresh),
+    );
+  }
+
+  Widget botonVerToken() {
+    return IconButton(
+      icon: const Icon(Icons.info_outlined),
+      tooltip: 'Token',
+      onPressed: () async {
+        String token = storage.getItem("token").toString();
+        await Clipboard.setData(ClipboardData(text: token));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(milliseconds: 500),
+            content: Padding(
+              padding: EdgeInsets.symmetric(vertical: 25),
+              child: Text(
+                'Token copiado',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

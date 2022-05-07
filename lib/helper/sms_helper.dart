@@ -33,7 +33,36 @@ class SMSHelper {
                 sortOrder: [
                   OrderBy(SmsColumn.DATE_SENT, sort: Sort.DESC),
                 ]);
-            debugPrint(">>>--------${messages.length}-- mensaje enviado-<<<");
+            if (messages.isNotEmpty) {
+              SmsMessage item = messages.first;
+              int idsms = item.id ?? 0;
+              SQLHelper.updateItem(idMensajeBD, estado, idsms);
+              notifyParent();
+            }
+          } else {
+            debugPrint("sdfasdf $estado");
+          }
+        });
+  }
+
+  static renviarMensaje(int idMensajeBD, String destinatario, String mensaje,
+      Function() notifyParent) async {
+    final telephony = Telephony.instance;
+    await telephony.sendSms(
+        to: destinatario,
+        message: mensaje,
+        statusListener: (SendStatus status) async {
+          int estado = status == SendStatus.SENT ? smsingresado : smsentregado;
+          if (estado == smsentregado) {
+            List<SmsMessage> messages = await telephony.getSentSms(
+                columns: defaultColumns,
+                filter: SmsFilter.where(SmsColumn.ADDRESS)
+                    .equals(destinatario)
+                    .and(SmsColumn.BODY)
+                    .equals(mensaje),
+                sortOrder: [
+                  OrderBy(SmsColumn.DATE_SENT, sort: Sort.DESC),
+                ]);
             if (messages.isNotEmpty) {
               SmsMessage item = messages.first;
               int idsms = item.id ?? 0;
@@ -41,6 +70,7 @@ class SMSHelper {
               notifyParent();
             }
           }
+          debugPrint("No enviado $estado");
         });
   }
 
